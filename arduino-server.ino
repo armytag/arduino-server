@@ -9,17 +9,16 @@
 #include <SD.h>
 #include <Ethernet.h>
 
-#define debugging true
-#define MAX_METHOD_LENGTH 10
-#define MAX_URI_LENGTH 40
-short mthd_len;
-short uri_len;
-//boolean debugging=true;
+const boolean DEBUGGING = true;
+const short MAX_METHOD_LENGTH = 10;
+const short MAX_URI_LENGTH = 40;
+short MethodLen;
+short UriLen;
 
-char request_method[MAX_METHOD_LENGTH];
-char request_uri[MAX_URI_LENGTH];
+char RequestMethod[MAX_METHOD_LENGTH];
+char RequestUri[MAX_URI_LENGTH];
 
-char password[25] = "YXJteXRhZzpwYXNzd29yZAo=";
+char authorization[] = "YXJteXRhZzpwYXNzd29yZA==";
 
 byte mac[]     = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 byte subnet[]  = { 255, 255, 255, 0 };
@@ -33,24 +32,24 @@ void setupEthernet() {
   Ethernet.begin(mac, ip, gateway, subnet);
 
   if(Ethernet.hardwareStatus() == EthernetNoHardware) {
-    if(debugging){ Serial.println("No ethernet shield"); } //Send status if in debug mode
+    if(DEBUGGING){ Serial.println(F("No ethernet shield")); } //Send status if in debug mode
     while(true){ delay(1); } //lock in an infinite loop
   }
   if(Ethernet.linkStatus() == LinkOFF) {
-    if(debugging){ Serial.println("No ethernet cable connected"); }
+    if(DEBUGGING){ Serial.println(F("No ethernet cable connected")); }
   }
 }
 void setupSD() {
   if(!SD.begin(4)) {
-    if(debugging){ Serial.println("Could not initialize SD card"); }
+    if(DEBUGGING){ Serial.println(F("Could not initialize SD card")); }
     while(true){ delay(1); }
   }
 }
 void setupServer() {
   server.begin();
-  if(debugging){ 
-    Serial.println("Arduino Server started");
-    Serial.print("Server is at ");
+  if(DEBUGGING){ 
+    Serial.println(F("Arduino Server started"));
+    Serial.print(F("Server is at "));
     Serial.println(Ethernet.localIP());
   }
 }
@@ -58,47 +57,47 @@ void setupServer() {
 
 /* Normal setup function. Calls the specific setup functions implemented above */
 void setup() {
-  if(debugging){ Serial.begin(9600); }
+  if(DEBUGGING){ Serial.begin(9600); }
   setupEthernet();
   setupSD();
   setupServer();
-  mthd_len = MAX_METHOD_LENGTH;
-  uri_len  = MAX_URI_LENGTH;
+  MethodLen = MAX_METHOD_LENGTH;
+  UriLen  = MAX_URI_LENGTH;
 }
 
 /* Normal loop function.
  * NOTE: You can pass the client to other functions (not pointer notation needed). */
 void loop() {
   // Reset the request strings
-  while(mthd_len>0){ mthd_len--; request_method[mthd_len]=0; }
-  while(uri_len>0) { uri_len--; request_uri[uri_len]=0; }
+  while(MethodLen>0){ MethodLen--; RequestMethod[MethodLen]=0; }
+  while(UriLen>0) { UriLen--; RequestUri[UriLen]=0; }
   
   // Check for an available client
   EthernetClient client = server.available();
   if(client) {
-    if(debugging){ Serial.println("---New Client---"); }
+    if(DEBUGGING){ Serial.println(F("---New Client---")); }
     boolean currentLineIsBlank = true;
     char c = client.read();
     /* Read the HTTP request, which should be the first line coming from the client
      * NOTE: A typical URI request should work fine, including folders and the initial '/' character */
-    while(c!=' '){ request_method[mthd_len]=c; mthd_len++; c=client.read(); }
+    while(c!=' '){ RequestMethod[MethodLen]=c; MethodLen++; c=client.read(); }
     c = client.read();
-    while(c!=' '){ request_uri[uri_len]=c; uri_len++; c=client.read(); }
-    if(request_uri[uri_len-1]=='/'){ 
-      request_uri[uri_len] = 'i'; uri_len++;
-      request_uri[uri_len] = 'n'; uri_len++;
-      request_uri[uri_len] = 'd'; uri_len++;
-      request_uri[uri_len] = 'e'; uri_len++;
-      request_uri[uri_len] = 'x'; uri_len++;
-      request_uri[uri_len] = '.'; uri_len++;
-      request_uri[uri_len] = 'h'; uri_len++;
-      request_uri[uri_len] = 't'; uri_len++;
-      request_uri[uri_len] = 'm'; uri_len++;
+    while(c!=' '){ RequestUri[UriLen]=c; UriLen++; c=client.read(); }
+    if(RequestUri[UriLen-1]=='/'){ 
+      RequestUri[UriLen] = 'i'; UriLen++;
+      RequestUri[UriLen] = 'n'; UriLen++;
+      RequestUri[UriLen] = 'd'; UriLen++;
+      RequestUri[UriLen] = 'e'; UriLen++;
+      RequestUri[UriLen] = 'x'; UriLen++;
+      RequestUri[UriLen] = '.'; UriLen++;
+      RequestUri[UriLen] = 'h'; UriLen++;
+      RequestUri[UriLen] = 't'; UriLen++;
+      RequestUri[UriLen] = 'm'; UriLen++;
     } 
-    if(debugging){
-      Serial.println(request_method);
-      Serial.println(request_uri);
-      Serial.println(parseContentType(request_uri));
+    if(DEBUGGING){
+      Serial.println(RequestMethod);
+      Serial.println(RequestUri);
+      Serial.println(parseContentType(RequestUri));
     }
     
     while(client.connected()) {
@@ -107,16 +106,16 @@ void loop() {
         Serial.write(c);
         if(c=='\n'){ 
           if(currentLineIsBlank){ 
-            if(debugging){ Serial.println(); }
-                 if(strcmp(request_method,"GET")==0){ processGetRequest(client,request_uri); }
-            else if(strcmp(request_method,"PUT")==0){ processPutRequest(client,request_uri); }
-            else if(strcmp(request_method,"HEAD")==0){ processHeadRequest(client,request_uri); }
-            else { client.println("HTTP/1.1 400 Bad Request\n"); }
+            if(DEBUGGING){ Serial.println(); }
+                 if(strcmp(RequestMethod,"GET")==0){ processGetRequest(client,RequestUri); }
+            else if(strcmp(RequestMethod,"PUT")==0){ processPutRequest(client,RequestUri); }
+            else if(strcmp(RequestMethod,"HEAD")==0){ processHeadRequest(client,RequestUri); }
+            else { client.println(F("HTTP/1.1 400 Bad Request\n")); }
             break;
           } 
           else{ currentLineIsBlank = true; }
         }
-        else if(c!='\r'){ currentLineIsBlank = false; }
+        else if(c!='\r'){ currentLineIsBlank=false; }
         
       }//end if(client.available())
     }//end while(client.connected())
@@ -124,19 +123,19 @@ void loop() {
     
     delay(1); // Give the web browser time to receive the data
     client.stop(); // Close the connection  
-    if(debugging){ Serial.println("---Client Closed---"); }  
+    if(DEBUGGING){ Serial.println(F("---Client Closed---")); }  
   }//end if(client)
 }
 
 void processHeadRequest(EthernetClient client, char* uri) {
   bool found = SD.exists(uri);
   if(found) {
-    client.println("HTTP/1.1 200 OK");
-    client.print  ("Content-Type: ");
+    client.println( F("HTTP/1.1 200 OK") );
+    client.print  ( F("Content-Type: ") );
     client.println(parseContentType(uri));
-    client.println("Connection: close");
+    client.println( F("Connection: close") );
     client.println();
-  } else { client.println("HTTP/1.1 404 Not Found\n"); }
+  } else { client.print(F("HTTP/1.1 404 Not Found\n")); }
 }
 
 void processGetRequest(EthernetClient client, char* uri) {
@@ -145,7 +144,7 @@ void processGetRequest(EthernetClient client, char* uri) {
   while(file.available()) {
     char c = file.read();
     client.write(c);
-    if(debugging){ 
+    if(DEBUGGING){ 
       if(c=='\n'){ Serial.println(); }
       else { Serial.write(c); }
     }
@@ -153,11 +152,24 @@ void processGetRequest(EthernetClient client, char* uri) {
 }
 
 void processPutRequest(EthernetClient client, char* uri) {
-  
+  Serial.println(client.available());
+  client.println(F("HTTP/1.1 100 Continue\n"));
+  long t = millis();
+  while(!client.available() || millis()-t<5000){ delay(1); }
+  if(DEBUGGING){ Serial.println(F(" -Begin Body- ")); }
+  char c = 0;
+  while(client.available() && c!=EOF){
+    c = client.read();
+    if(DEBUGGING){ 
+      if(c=='\n'){ Serial.println(); }
+      else { Serial.write(c); }
+    }
+  }
+  client.println(F("HTTP/1.1 200 OK\n"));
 }
 
 String parseContentType(char* uri) {
-  short i = uri_len;
+  short i = UriLen;
   short e = 0;
   char ext[4] = {0,0,0,0};
   while(uri[--i]!='.'){ ;; }
