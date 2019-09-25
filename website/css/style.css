@@ -1,0 +1,25 @@
+body {
+  width: 100%;
+  text-align: center;
+  margin: auto;
+}
+
+p {
+  color: #ff0000;
+}
+
+#content {
+  width: 80%;
+  margin: auto;
+}
+
+#button {
+  width: 40%;
+  margin: auto;
+  font-size: 18px;
+  border: 2px solid black;
+}
+
+#button:hover {
+  cursor: pointer;
+}
