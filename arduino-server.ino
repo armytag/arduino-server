@@ -31,7 +31,7 @@ IPAddress ip(192, 168, 0, 10);
 EthernetServer server(80);
 
 
-/* Normal setup function. Calls the specific setup functions implemented above */
+/* Normal setup function. Calls the specific setup functions implemented below */
 void 
 setup() {
     if(DEBUGGING){ Serial.begin(9600); }
@@ -47,84 +47,114 @@ setup() {
 void 
 loop() {
     // Reset the request strings
-    while(MethodLen>0){ MethodLen--; RequestMethod[MethodLen]=0; }
-    while(UriLen>0) { UriLen--; RequestUri[UriLen]=0; }
+    clearRequestMethod();
+    clearRequestUri();
     Authorized = false;
 
     // Check for an available client
     EthernetClient client = server.available();
-    if(client) {
-        if(DEBUGGING){ Serial.println(F("---New Client---")); }
+    if (client) {
+        if (DEBUGGING) {Serial.println(F("---New Client---"));}
         boolean currentLineIsBlank = true;
-        char c = client.read();
-        /* Read the HTTP request, which should be the first line coming from the client
-        * NOTE: A typical URI request should work fine, including folders and the initial '/' character */
-        while(c!=' '){ RequestMethod[MethodLen]=c; MethodLen++; c=client.read(); }
-        c = client.read();
-        while(c!=' '){ RequestUri[UriLen]=c; UriLen++; c=client.read(); }
-        if(RequestUri[UriLen-1]=='/'){ 
-            RequestUri[UriLen] = 'i'; UriLen++;
-            RequestUri[UriLen] = 'n'; UriLen++;
-            RequestUri[UriLen] = 'd'; UriLen++;
-            RequestUri[UriLen] = 'e'; UriLen++;
-            RequestUri[UriLen] = 'x'; UriLen++;
-            RequestUri[UriLen] = '.'; UriLen++;
-            RequestUri[UriLen] = 'h'; UriLen++;
-            RequestUri[UriLen] = 't'; UriLen++;
-            RequestUri[UriLen] = 'm'; UriLen++;
-        } 
-        if(DEBUGGING){
+        readRequestLine(client);
+        if (DEBUGGING) {
             Serial.println(RequestMethod);
             Serial.println(RequestUri);
             Serial.println(parseContentType(RequestUri));
         }
-
-        while(client.connected()) {
-            if(client.available()) {
+        while (client.connected()) {
+            if (client.available()) {
                 char c = client.read();
-                Serial.write(c);
+                if (DEBUGGING) {Serial.write(c);}
                 if (c=='\n') {
-                    if (currentLineIsBlank) { 
-                        if (DEBUGGING){ Serial.println(); }
-                        if (strcmp(RequestMethod,"GET")==0){ processGetRequest(client,RequestUri); }
-                        else if (strcmp(RequestMethod,"PUT")==0){ processPutRequest(client,RequestUri); }
-                        else if (strcmp(RequestMethod,"HEAD")==0){ processHeadRequest(client,RequestUri); }
-                        else { client.println(F("HTTP/1.1 400 Bad Request\n")); }
-                        break;
-                    } //end if(currentLineIsBlank)
-                    else { //Process header line
-                        char headerField[40] = "";
-                        short hfLen=0;
-                        while((HeaderBuffer[hfLen]!=':')&&(hfLen<40)&&(hfLen<HeadBufLen)) {
-                            headerField[hfLen] = HeaderBuffer[hfLen];
-                            hfLen++;
-                        }
-                        if(strcmp(headerField,"Authorization")==0){ 
-                            if(strcmp(&HeaderBuffer[hfLen+8],Authorization)==0){ Authorized=true; }
-                        }
-                        //Clear the char buffer
-                        while(HeadBufLen > 0) {
-                            HeadBufLen--;
-                            HeaderBuffer[HeadBufLen] = 0;
-                        }
+                    if (currentLineIsBlank) {
+                        handleRequest(client);
+                    } else { //Process header line
+                        if (DEBUGGING) {Serial.println();}
+                        parseHeaderLine(client);
                         currentLineIsBlank = true;
                     }
                 } //end if(c=='\n')
-                else if(c!='\r'){ 
-                    if(HeadBufLen<MAX_HEAD_BUF_LENGTH) {
+                else if (c!='\r') { 
+                    if (HeadBufLen<MAX_HEAD_BUF_LENGTH) {
                         HeaderBuffer[HeadBufLen] = c;
                         HeadBufLen++;
                     }
                     currentLineIsBlank=false; 
                 }
             }//end if(client.available())
-        }//end while(client.connected())
-
-
+        }
         delay(1); // Give the web browser time to receive the data
         client.stop(); // Close the connection  
-        if(DEBUGGING){ Serial.println(F("---Client Closed---")); }  
+        if (DEBUGGING) {Serial.println(F("---Client Closed---"));}  
     }//end if(client)
+}
+
+void
+clearRequestMethod() {
+    while (MethodLen>0) {
+       MethodLen--; RequestMethod[MethodLen]=0;
+   }
+}
+void
+clearRequestUri() {
+    while (UriLen>0) {
+        UriLen--; RequestUri[UriLen]=0;
+   }
+}
+
+void
+readRequestLine(EthernetClient client) {
+    char c = client.read();
+    /* Read the HTTP request, which should be the first line coming from the client
+    * NOTE: A typical URI request should work fine, including folders and the initial '/' character */
+    while (c!=' ') {
+        RequestMethod[MethodLen]=c;
+        MethodLen++;
+        c=client.read();
+    }
+    c = client.read();
+    while (c!=' ') {
+        RequestUri[UriLen]=c; 
+        UriLen++; 
+        c=client.read();
+    }
+    if (RequestUri[UriLen-1]=='/') { 
+        RequestUri[UriLen] = 'i'; UriLen++;
+        RequestUri[UriLen] = 'n'; UriLen++;
+        RequestUri[UriLen] = 'd'; UriLen++;
+        RequestUri[UriLen] = 'e'; UriLen++;
+        RequestUri[UriLen] = 'x'; UriLen++;
+        RequestUri[UriLen] = '.'; UriLen++;
+        RequestUri[UriLen] = 'h'; UriLen++;
+        RequestUri[UriLen] = 't'; UriLen++;
+        RequestUri[UriLen] = 'm'; UriLen++;
+    } 
+}
+void
+handleRequest(EthernetClient client) {
+    if (strcmp(RequestMethod,"GET")==0) {processGetRequest(client,RequestUri);}
+    else if (strcmp(RequestMethod,"PUT")==0) {processPutRequest(client,RequestUri);}
+    else if (strcmp(RequestMethod,"HEAD")==0) {processHeadRequest(client,RequestUri);}
+    else {client.println(F("HTTP/1.1 400 Bad Request\n"));}
+    return;
+}
+void
+parseHeaderLine(EthernetClient client) {
+    char headerField[40] = "";
+    short hfLen=0;
+    while((HeaderBuffer[hfLen]!=':')&&(hfLen<40)&&(hfLen<HeadBufLen)) {
+        headerField[hfLen] = HeaderBuffer[hfLen];
+        hfLen++;
+    }
+    if(strcmp(headerField,"Authorization")==0){ 
+        if(strcmp(&HeaderBuffer[hfLen+8],Authorization)==0){ Authorized=true; }
+    }
+    //Clear the char buffer
+    while(HeadBufLen > 0) {
+        HeadBufLen--;
+        HeaderBuffer[HeadBufLen] = 0;
+    }
 }
 
 /* Functions for setting up the hardware peripherals, i.e. Ethernet and SD */
@@ -184,7 +214,7 @@ processGetRequest(EthernetClient client, char* uri) {
             char c = file.read();
             client.write(c);
             if(DEBUGGING){ 
-                if(c=='\n'){ Serial.println(); }
+                if (c=='\n') {Serial.println();}
                 else { Serial.write(c); }
             }
         }//end while(file.available())
@@ -216,7 +246,6 @@ processPutRequest(EthernetClient client, char* uri) {
         for (short i=0; i<lastSlash; i++) {
             dir[i] = uri[i];
         }
-        Serial.print(uri); Serial.print(" -> "); Serial.println(dir);
         if (!SD.exists(dir)){ SD.mkdir(dir); }
     }//end else of if(SD.exists(uri))
 
