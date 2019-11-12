@@ -69,6 +69,7 @@ loop() {
                 if (c=='\n') {
                     if (currentLineIsBlank) {
                         handleRequest(client);
+                        break;
                     } else { //Process header line
                         if (DEBUGGING) {Serial.println();}
                         parseHeaderLine(client);
@@ -89,6 +90,43 @@ loop() {
         if (DEBUGGING) {Serial.println(F("---Client Closed---"));}  
     }//end if(client)
 }
+
+/* Functions for setting up the hardware peripherals, i.e. Ethernet and SD */
+void 
+setupEthernet() {
+    Ethernet.begin(mac, ip, gateway, subnet);
+
+    if (Ethernet.hardwareStatus() == EthernetNoHardware) {
+        if (DEBUGGING) {
+            Serial.println(F("No ethernet shield"));
+        } //Send status if in debug mode
+        while (true) { delay(1); } //lock in an infinite loop
+    }
+    if (Ethernet.linkStatus() == LinkOFF) {
+        if (DEBUGGING) {
+            Serial.println(F("No ethernet cable connected"));
+        }
+    }
+}
+void 
+setupSD() {
+    if (!SD.begin(4)) {
+        if (DEBUGGING) {
+            Serial.println(F("Could not initialize SD card"));
+        }
+        while (true) { delay(1); }
+    }
+}
+void 
+setupServer() {
+    server.begin();
+    if (DEBUGGING) { 
+        Serial.println(F("Arduino Server started"));
+        Serial.print  (F("Server is at "));
+        Serial.println(Ethernet.localIP());
+    }
+}
+/* Finish setup functions */ 
 
 void
 clearRequestMethod() {
@@ -157,50 +195,19 @@ parseHeaderLine(EthernetClient client) {
     }
 }
 
-/* Functions for setting up the hardware peripherals, i.e. Ethernet and SD */
-void 
-setupEthernet() {
-    Ethernet.begin(mac, ip, gateway, subnet);
-
-    if(Ethernet.hardwareStatus() == EthernetNoHardware) {
-        if(DEBUGGING){ Serial.println(F("No ethernet shield")); } //Send status if in debug mode
-        while(true){ delay(1); } //lock in an infinite loop
-    }
-    if(Ethernet.linkStatus() == LinkOFF) {
-        if(DEBUGGING){ Serial.println(F("No ethernet cable connected")); }
-    }
-}
-
-void 
-setupSD() {
-    if(!SD.begin(4)) {
-        if(DEBUGGING){ Serial.println(F("Could not initialize SD card")); }
-        while(true){ delay(1); }
-    }
-}
-
-void 
-setupServer() {
-    server.begin();
-    if(DEBUGGING){ 
-        Serial.println(F("Arduino Server started"));
-        Serial.print(F("Server is at "));
-        Serial.println(Ethernet.localIP());
-    }
-}
-/* Finish setup functions */ 
-
 /* Functions for handling particular HTTP requests */
 void 
 processHeadRequest(EthernetClient client, char* uri) {
     bool found = SD.exists(uri);
-    if(found) {
-        client.println( F("HTTP/1.1 200 OK") );
-        client.print  ( F("Content-Type: ") );
+    if (found) {
+        client.println(F("HTTP/1.1 200 OK"));
+        client.print  (F("Content-Type: "));
         client.println(parseContentType(uri));
-        client.println( F("Connection: close") );
+        client.println(F("Connection: close"));
         client.println();
-    } else { client.print(F("HTTP/1.1 404 Not Found\n")); }
+    } else {
+        client.print(F("HTTP/1.1 404 Not Found\n"));
+    }
 }
 
 void 
@@ -223,23 +230,23 @@ processGetRequest(EthernetClient client, char* uri) {
 
 void 
 processPutRequest(EthernetClient client, char* uri) {
+    // See if the proper authorization had been provided during the request parsing
     if (!Authorized){ 
         client.println(F("HTTP/1.1 401 Unauthorized\n")); 
         return;
     }
-    if (SD.exists(uri)){ //Delete existing versions if they are files
+    if (SD.exists(uri)){ // Check if the requested URI already exists
         File file = SD.open(uri);
-        if (file.isDirectory()){
+        if (file.isDirectory()){ // If it is a directory, don't allow the PUT request (i.e. no writing directories)
             file.close();
             client.println(F("HTTP/1.1 405 Method Not Allowed\n"));
             return;
-        } else {
+        } else { // If it is a file, delete the existing version
             file.close();
             SD.remove(uri); 
         }
         SD.rmdir(uri);
-    }
-    else { //Create intermediate directories if they don't exist, otherwise SD.open() will fail to create the file
+    } else { //Create intermediate directories if they don't exist, otherwise SD.open() will fail to create the file
         short lastSlash=UriLen-1;
         while (lastSlash>0 && uri[lastSlash]!='/'){ lastSlash--; }
         char dir[lastSlash+1] = "";
@@ -250,9 +257,9 @@ processPutRequest(EthernetClient client, char* uri) {
     }//end else of if(SD.exists(uri))
 
     client.println(F("HTTP/1.1 100 Continue\n"));
-    long t = millis();
-    File file = SD.open(uri, FILE_WRITE);
-    while (!client.available() && millis()-t<5000) { delay(1); }
+    long t = millis(); // Record current time to check for timeout
+    File file = SD.open(uri, FILE_WRITE); // Prepare the the file to be written
+    while (!client.available() && millis()-t<5000) { delay(1); } // Wait for the content to be sent, timing out after 5 seconds
     if (DEBUGGING) { Serial.println(F(" -Begin Body- ")); }
     char c = 0;
     while (client.available() && c!=EOF) {
@@ -263,7 +270,6 @@ processPutRequest(EthernetClient client, char* uri) {
             else { Serial.write(c); }
         }
     }
-    //file.write(EOF);
     file.close();
     client.println(F("HTTP/1.1 200 OK\n"));
 }
