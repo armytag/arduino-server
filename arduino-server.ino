@@ -9,7 +9,8 @@
 #include <SD.h>
 #include <Ethernet.h>
 
-const boolean DEBUGGING = true;
+const boolean DISPLAYING = true;
+const boolean DEBUGGING  = false;
 const short MAX_METHOD_LENGTH = 10;
 const short MAX_URI_LENGTH = 40;
 const short MAX_HEAD_BUF_LENGTH = 100;
@@ -34,7 +35,7 @@ EthernetServer server(80);
 /* Normal setup function. Calls the specific setup functions implemented below */
 void 
 setup() {
-    if(DEBUGGING){ Serial.begin(9600); }
+    if(DISPLAYING||DEBUGGING){ Serial.begin(9600); }
     setupEthernet();
     setupSD();
     setupServer();
@@ -54,10 +55,10 @@ loop() {
     // Check for an available client
     EthernetClient client = server.available();
     if (client) {
-        if (DEBUGGING) {Serial.println(F("---New Client---"));}
+        if (DISPLAYING||DEBUGGING) {Serial.println(F("---New Client---"));}
         boolean currentLineIsBlank = true;
         readRequestLine(client);
-        if (DEBUGGING) {
+        if (DISPLAYING||DEBUGGING) {
             Serial.println(RequestMethod);
             Serial.println(RequestUri);
             Serial.println(parseContentType(RequestUri));
@@ -65,7 +66,7 @@ loop() {
         while (client.connected()) {
             if (client.available()) {
                 char c = client.read();
-                if (DEBUGGING) {Serial.write(c);}
+                if (DISPLAYING||DEBUGGING) {Serial.write(c);}
                 if (c=='\n') {
                     if (currentLineIsBlank) {
                         handleRequest(client);
@@ -87,7 +88,7 @@ loop() {
         }
         delay(1); // Give the web browser time to receive the data
         client.stop(); // Close the connection  
-        if (DEBUGGING) {Serial.println(F("---Client Closed---"));}  
+        if (DISPLAYING||DEBUGGING) {Serial.println(F("---Client Closed---"));}  
     }//end if(client)
 }
 
@@ -120,7 +121,7 @@ setupSD() {
 void 
 setupServer() {
     server.begin();
-    if (DEBUGGING) { 
+    if (DISPLAYING||DEBUGGING) { 
         Serial.println(F("Arduino Server started"));
         Serial.print  (F("Server is at "));
         Serial.println(Ethernet.localIP());
@@ -146,18 +147,18 @@ readRequestLine(EthernetClient client) {
     char c = client.read();
     /* Read the HTTP request, which should be the first line coming from the client
     * NOTE: A typical URI request should work fine, including folders and the initial '/' character */
-    while (c!=' ') {
+    while (c!=' ' && client.connected()) {
         RequestMethod[MethodLen]=c;
         MethodLen++;
         c=client.read();
     }
     c = client.read();
-    while (c!=' ') {
+    while (c!=' ' && client.connected()) {
         RequestUri[UriLen]=c; 
         UriLen++; 
         c=client.read();
     }
-    if (RequestUri[UriLen-1]=='/') { 
+    if (RequestUri[UriLen-1]=='/' && client.connected()) { 
         RequestUri[UriLen] = 'i'; UriLen++;
         RequestUri[UriLen] = 'n'; UriLen++;
         RequestUri[UriLen] = 'd'; UriLen++;
@@ -199,7 +200,7 @@ parseHeaderLine(EthernetClient client) {
 void 
 processHeadRequest(EthernetClient client, char* uri) {
     bool found = SD.exists(uri);
-    if (found) {
+    if (found && client.connected()) {
         client.println(F("HTTP/1.1 200 OK"));
         client.print  (F("Content-Type: "));
         client.println(parseContentType(uri));
@@ -217,7 +218,7 @@ processGetRequest(EthernetClient client, char* uri) {
     if (file.isDirectory()) {
 
     } else {
-        while(file.available()) {
+        while(file.available() && client.connected()) {
             char c = file.read();
             client.write(c);
             if(DEBUGGING){ 
@@ -226,6 +227,7 @@ processGetRequest(EthernetClient client, char* uri) {
             }
         }//end while(file.available())
     }//end else of if(file.isDirectory()) 
+    file.close();
 }
 
 void 
