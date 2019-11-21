@@ -2,16 +2,38 @@
  *  Code for running a more sophisticated webserver on an Arduino Uno
  *  
  *  created  11 Sep 2019 
- *  modified 13 Nov 2019
- *  by Tristan Armitage
+ *  modified 21 Nov 2019
+ *  by Tristan Armitage  (armitageth@gmail.com)
  * 
- *  In order to understand how this code works, it is important to understand 
- *  how a client (e.g. a web browser) sends HTTP requests to a server.
+ *  To understand how this code works, it is important to understand 
+ *  how a client (e.g. a web browser) sends HTTP requests to a server. 
+ *  
+ *  In order to get information from a server, such as the contents of a 
+ *  webpage, a client will send an HTTP request to that server, and the
+ *  server will then respond appropriately. The code below allows an
+ *  Arduino to create such a response just like any other server, but
+ *  it does so based on the expectation of a proper HTTP request.
+ *
+ *  An HTTP request should be structured into a HEAD, which contains 
+ *  information about the request, as well as a BODY, which contains any
+ *  further content or data (although not all requests will include a BODY).
+ *  The BODY doesn't require any particular internal structure, usually just
+ *  the contents of a file or a set of data. The HEAD, on the other hand,
+ *  will always start with a specific line containing, in order, the type
+ *  of request, the Uniform-Resource-Identifier (URI, i.e. what content
+ *  is being requested), and the HTTP version. The HEAD will then contain
+ *  several "fields" providing more information, such as what browser is
+ *  being used, any credentials the user might want to provide, and so on.
+ *  At the end of the HEAD is an empty line, which separates it from the BODY.
  *
  *  An example of an HTTP request might look like this:
  *  (this example tries to update the index.html file on the server)
  *
- *      PUT /index.html HTTP/1.1
+ *      PUT /index.htm HTTP/1.1
+ *      Host: 192.168.0.10
+ *      Connection: keep-alive
+ *      User-Agent: Mozilla/5.0
+ *      Accept: text/html
  *      Authorization: Basic YXJteXRhZzpwYXNzd29yZA==
  *      
  *      <!DOCTYPE html>
@@ -25,7 +47,7 @@
  *      </html>
  *  
  *  From this example we can see that the first line of the HEAD contains a
- *  request type (PUT), a URI (/index.html), and an HTTP version.  After that,
+ *  request type (PUT), a URI (/index.htm), and an HTTP version.  After that,
  *  there are several header fields with further information, such as a basic
  *  HTTP Authorization.  The blank line indicates the end of the HEAD, and
  *  everything after that is the BODY of the request (in this case, a simple
