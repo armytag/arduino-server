@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Arduino Server Guest Book</title>
+        <link rel="stylesheet" type="text/css" href="css/style.css">
+        <link rel="stylesheet" type="text/css" href="css/gbook.css">
+    </head>
+    <body>
+        <div id="navbar">
+            <a href="index.htm" style="border-right: 1px solid white">About</a>
+            <a href="code.htm" target="_blank" style="border-left: 1px solid white">Server Code</a>
+        </div>
+        <div id="content">
+            <div id="gbook-content">
+                <h3>LOADING MESSAGES...</h3>
+            </div>
+            <div id="gbook-form">
+                <div id="form-container">
+                    <form id="form-content" onsubmit="submitForm();return false">
+                        Name:<br>
+                        <input id="form-user" type="text" name="user"><br>
+                        <br>
+                        Message:<br>
+                        <textarea id="form-message" type="text" name="message"></textarea><br>
+                        <br>
+                        <input id="form-submit-button" type="submit" value="Submit" name="submitButton" style="right: 0; top: 0;">
+                    </form>
+                </div>
+                <svg id="form-toggle-button" width="80" height="80" onclick="toggleForm()">
+                    <circle cx="40" cy="40" r="40" fill="#aaa" />
+                    <rect width="10" height="60" x="35" y="10" fill="#eee" /> 
+                    <rect width="60" height="10" x="10" y="35" fill="#eee" />
+                </svg>
+            </div>
+        </div>
+        <script src="js/gbook.js"></script>
+    </body>
+</html>
+

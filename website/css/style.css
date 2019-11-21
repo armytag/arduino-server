@@ -2,15 +2,37 @@ body {
   width: 100%;
   text-align: center;
   margin: auto;
+  background-color: black;
+  color: white;
+  font-family: arial, sans-serif;
 }
 
 p {
-  color: #ff0000;
+
+}
+
+#navbar {
+    top: 0;
+    width: 100%;
+    font-size: 20px;
+    display: flex;
+    flex-direction: row;
+    border-bottom: 5px solid black;
+    position: fixed;
+}
+#navbar a {
+    background-color: #111;
+    padding: 0.8em;
+    text-decoration: none;
+    flex: 1;
+    color: white;
+    border-bottom: 3px solid white;
 }
 
 #content {
-  width: 80%;
+  width: 70%;
   margin: auto;
+  margin-top: 5em;
 }
 
 #button {
